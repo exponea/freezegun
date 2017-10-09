@@ -249,6 +249,10 @@ class FrozenDateTimeFactory(object):
         return self.time_to_freeze
 
 
+NOT_FAKED = {'real_date', 'real_datetime', 'real_time', 'real_localtime', 'real_gmtime', 'real_strftime'}
+FAKED = {'date', 'datetime', 'time', 'localtime', 'gmtime', 'strftime'}
+
+
 class _freeze_time(object):
 
     def __init__(self, time_to_freeze_str, tz_offset, ignore, tick):
@@ -356,6 +360,7 @@ class _freeze_time(object):
         add_change = self.undo_changes.append
 
         for mod_name, module in list(sys.modules.items()):
+
             if mod_name is None or module is None:
                 continue
             elif mod_name.startswith(self.ignore):
@@ -363,40 +368,40 @@ class _freeze_time(object):
             elif (not hasattr(module, "__name__")
                 or module.__name__ in ('datetime', 'time')):
                 continue
-            for module_attribute in dir(module):
-                if module_attribute in ('real_date', 'real_datetime',
-                    'real_time', 'real_localtime', 'real_gmtime', 'real_strftime'):
-                    continue
+            while True:
                 try:
-                    attribute_value = getattr(module, module_attribute)
-                except (ImportError, AttributeError):
-                    # For certain libraries, this can result in ImportError(_winreg) or AttributeError (celery)
-                    continue
-                try:
-                    if attribute_value not in real_things:
-                        continue
+                    for module_attribute, attribute_value in module.__dict__.iteritems():
+                        if module_attribute in NOT_FAKED:
+                            continue
+                        try:
+                            if module_attribute not in FAKED:
+                                continue
 
-                    if attribute_value is real_datetime:
-                        setattr(module, module_attribute, FakeDatetime)
-                        add_change((module, module_attribute, real_datetime))
-                    elif attribute_value is real_date:
-                        setattr(module, module_attribute, FakeDate)
-                        add_change((module, module_attribute, real_date))
-                    elif attribute_value is real_time:
-                        setattr(module, module_attribute, fake_time)
-                        add_change((module, module_attribute, real_time))
-                    elif attribute_value is real_localtime:
-                        setattr(module, module_attribute, fake_localtime)
-                        add_change((module, module_attribute, real_localtime))
-                    elif attribute_value is real_gmtime:
-                        setattr(module, module_attribute, fake_gmtime)
-                        add_change((module, module_attribute, real_gmtime))
-                    elif attribute_value is real_strftime:
-                        setattr(module, module_attribute, fake_strftime)
-                        add_change((module, module_attribute, real_strftime))
-                except:
-                    # If it's not possible to compare the value to real_XXX (e.g. hiredis.version)
+                            if attribute_value is real_datetime:
+                                setattr(module, module_attribute, FakeDatetime)
+                                add_change((module, module_attribute, real_datetime))
+                            elif attribute_value is real_date:
+                                setattr(module, module_attribute, FakeDate)
+                                add_change((module, module_attribute, real_date))
+                            elif attribute_value is real_time:
+                                setattr(module, module_attribute, fake_time)
+                                add_change((module, module_attribute, real_time))
+                            elif attribute_value is real_localtime:
+                                setattr(module, module_attribute, fake_localtime)
+                                add_change((module, module_attribute, real_localtime))
+                            elif attribute_value is real_gmtime:
+                                setattr(module, module_attribute, fake_gmtime)
+                                add_change((module, module_attribute, real_gmtime))
+                            elif attribute_value is real_strftime:
+                                setattr(module, module_attribute, fake_strftime)
+                                add_change((module, module_attribute, real_strftime))
+                        except:
+                            # If it's not possible to compare the value to real_XXX (e.g. hiredis.version)
+                            pass
+                    break
+                finally:
                     pass
+
 
         datetime.datetime.times_to_freeze.append(time_to_freeze)
         datetime.datetime.tz_offsets.append(self.tz_offset)
