@@ -399,8 +399,8 @@ class _freeze_time(object):
                             # If it's not possible to compare the value to real_XXX (e.g. hiredis.version)
                             pass
                     break
-                finally:
-                    pass
+                except RuntimeError:
+                    continue
 
 
         datetime.datetime.times_to_freeze.append(time_to_freeze)
