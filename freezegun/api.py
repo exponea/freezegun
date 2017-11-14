@@ -1,12 +1,12 @@
+import calendar
 import datetime
 import functools
 import inspect
+import platform
+import six
 import sys
 import time
-import calendar
 import unittest
-import platform
-
 from dateutil import parser
 
 real_time = time.time
@@ -250,7 +250,6 @@ class FrozenDateTimeFactory(object):
 
 
 NOT_FAKED = {'real_date', 'real_datetime', 'real_time', 'real_localtime', 'real_gmtime', 'real_strftime'}
-FAKED = {'date', 'datetime', 'time', 'localtime', 'gmtime', 'strftime'}
 
 
 class _freeze_time(object):
@@ -349,14 +348,6 @@ class _freeze_time(object):
         copyreg.dispatch_table[real_date] = pickle_fake_date
 
         # Change any place where the module had already been imported
-        real_things = (
-            real_time,
-            real_localtime,
-            real_gmtime,
-            real_strftime,
-            real_date,
-            real_datetime
-        )
         add_change = self.undo_changes.append
 
         for mod_name, module in list(sys.modules.items()):
@@ -370,13 +361,10 @@ class _freeze_time(object):
                 continue
             while True:
                 try:
-                    for module_attribute, attribute_value in module.__dict__.iteritems():
+                    for module_attribute, attribute_value in six.iteritems(module.__dict__):
                         if module_attribute in NOT_FAKED:
                             continue
                         try:
-                            if module_attribute not in FAKED:
-                                continue
-
                             if attribute_value is real_datetime:
                                 setattr(module, module_attribute, FakeDatetime)
                                 add_change((module, module_attribute, real_datetime))
